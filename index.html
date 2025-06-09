@@ -2,72 +2,86 @@
 <html lang="de">
 <head>
   <meta charset="UTF-8">
-  <title>ASI-WACHE Admin – Mitarbeiterverwaltung</title>
+  <title>ASI-WACHE Login</title>
   <style>
-    body { font-family: Arial, sans-serif; background: #f4f4f4; padding: 2em; }
-    .header { display: flex; align-items: center; gap: 1em; margin-bottom: 2em; }
-    .header img { height: 60px; }
-    .section { background: white; padding: 1em; margin-bottom: 2em; border-radius: 10px; box-shadow: 0 0 10px rgba(0,0,0,0.1); }
-    h1, h2 { color: #c00; }
-    input, button { padding: 0.5em; margin-top: 0.5em; width: 100%; }
-    ul { list-style: none; padding: 0; }
-    li { padding: 0.3em 0; display: flex; justify-content: space-between; }
-    li button { width: auto; background: #c00; color: white; border: none; padding: 0.3em 0.6em; border-radius: 5px; cursor: pointer; }
+    body { font-family: Arial, sans-serif; background: #f4f4f4; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; margin: 0; }
+    .login-box, .panel { background: white; padding: 2em; border-radius: 10px; box-shadow: 0 0 10px rgba(0,0,0,0.1); max-width: 400px; width: 100%; }
+    .logo { display: flex; align-items: center; justify-content: center; margin-bottom: 1em; }
+    .logo img { height: 60px; }
+    input, button { width: 100%; padding: 0.7em; margin-top: 0.7em; }
+    h1, h2 { color: #c00; text-align: center; }
+    ul { padding: 0; list-style: none; }
+    li { display: flex; justify-content: space-between; margin-top: 0.5em; }
+    li button { background: #c00; color: white; border: none; padding: 0.3em 0.6em; border-radius: 5px; cursor: pointer; }
   </style>
 </head>
 <body>
-  <div class="header">
-    <img src="logo.png" alt="ASI-WACHE Logo">
-    <h1>ASI-WACHE Adminpanel – Mitarbeiter</h1>
-  </div>
 
-  <div class="section">
-    <h2>🧑‍💼 Neuen Mitarbeiter hinzufügen</h2>
-    <form id="addForm">
-      <input type="text" id="newName" placeholder="Name des Mitarbeiters" required />
-      <button type="submit">Hinzufügen</button>
-    </form>
-  </div>
+<div class="login-box" id="loginBox">
+  <div class="logo"><img src="logo.png" alt="ASI-WACHE Logo"></div>
+  <h1>ASI-WACHE Login</h1>
+  <input type="text" id="username" placeholder="Benutzername">
+  <input type="password" id="password" placeholder="Passwort">
+  <button onclick="checkLogin()">Einloggen</button>
+  <p id="loginError" style="color:red;"></p>
+</div>
 
-  <div class="section">
-    <h2>📋 Aktuelle Mitarbeiter</h2>
-    <ul id="userList">Wird geladen...</ul>
-  </div>
+<div class="panel" id="adminPanel" style="display:none;">
+  <h2>Mitarbeiterverwaltung</h2>
+  <form id="addForm">
+    <input type="text" id="newName" placeholder="Name des Mitarbeiters" required />
+    <button type="submit">Hinzufügen</button>
+  </form>
+  <ul id="userList">Wird geladen...</ul>
+</div>
 
-  <script>
-    const API_URL = "https://asi-wache-backend-users.onrender.com/api/users";
+<script>
+  const correctUser = "ASI-admin";
+  const correctPass = "Web-374374";
 
-    async function loadUsers() {
-      const res = await fetch(API_URL);
-      const users = await res.json();
-      const list = document.getElementById("userList");
-      list.innerHTML = "";
-      users.forEach(user => {
-        const li = document.createElement("li");
-        li.innerHTML = `<span>${user.name}</span><button onclick="deleteUser('${user.id}')">Löschen</button>`;
-        list.appendChild(li);
-      });
-    }
-
-    async function deleteUser(id) {
-      await fetch(API_URL + "/" + id, { method: "DELETE" });
+  function checkLogin() {
+    const user = document.getElementById("username").value;
+    const pass = document.getElementById("password").value;
+    if (user === correctUser && pass === correctPass) {
+      document.getElementById("loginBox").style.display = "none";
+      document.getElementById("adminPanel").style.display = "block";
       loadUsers();
+    } else {
+      document.getElementById("loginError").textContent = "❌ Falsche Zugangsdaten!";
     }
+  }
 
-    document.getElementById("addForm").addEventListener("submit", async e => {
-      e.preventDefault();
-      const name = document.getElementById("newName").value;
-      if (!name) return;
-      await fetch(API_URL, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name })
-      });
-      document.getElementById("newName").value = "";
-      loadUsers();
+  const API_URL = "https://asi-wache-backend-users.onrender.com/api/users";
+
+  async function loadUsers() {
+    const res = await fetch(API_URL);
+    const users = await res.json();
+    const list = document.getElementById("userList");
+    list.innerHTML = "";
+    users.forEach(user => {
+      const li = document.createElement("li");
+      li.innerHTML = `<span>${user.name}</span><button onclick="deleteUser('${user.id}')">Löschen</button>`;
+      list.appendChild(li);
     });
+  }
 
+  async function deleteUser(id) {
+    await fetch(API_URL + "/" + id, { method: "DELETE" });
     loadUsers();
-  </script>
+  }
+
+  document.getElementById("addForm").addEventListener("submit", async e => {
+    e.preventDefault();
+    const name = document.getElementById("newName").value;
+    if (!name) return;
+    await fetch(API_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name })
+    });
+    document.getElementById("newName").value = "";
+    loadUsers();
+  });
+</script>
 </body>
 </html>

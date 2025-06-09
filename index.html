@@ -2,17 +2,43 @@
 <html lang="de">
 <head>
   <meta charset="UTF-8">
-  <title>ASI-WACHE Adminpanel</title>
+  <title>ASI-WACHE Admin Login</title>
   <style>
-    body { font-family: Arial, sans-serif; padding: 2em; background-color: #f4f4f4; }
-    .card { background: white; padding: 2em; border-radius: 10px; box-shadow: 0 0 10px rgba(0,0,0,0.1); }
-    h1 { color: #c00; }
+    body { font-family: Arial, sans-serif; background: #f4f4f4; display: flex; justify-content: center; align-items: center; height: 100vh; }
+    .login-box { background: white; padding: 2em; border-radius: 10px; box-shadow: 0 0 10px rgba(0,0,0,0.1); text-align: center; }
+    input { display: block; width: 100%; margin: 1em 0; padding: 0.5em; border-radius: 5px; border: 1px solid #ccc; }
+    button { padding: 0.5em 1em; border: none; border-radius: 5px; background: #c00; color: white; cursor: pointer; }
+    .hidden { display: none; }
   </style>
 </head>
 <body>
-  <div class="card">
-    <h1>ASI-WACHE Adminpanel</h1>
-    <p>Hier können Sie demnächst Mitarbeiter verwalten, Zeiten einsehen und Nachrichten versenden.</p>
+  <div class="login-box">
+    <h1>Admin Login</h1>
+    <input type="text" id="username" placeholder="Benutzername" />
+    <input type="password" id="password" placeholder="Passwort" />
+    <button onclick="login()">Einloggen</button>
+    <p id="error" style="color:red; display:none;">Falscher Benutzername oder Passwort</p>
   </div>
+
+  <div class="login-box hidden" id="admin-panel">
+    <h1>Willkommen, Admin</h1>
+    <p>Hier wird dein Adminbereich angezeigt.</p>
+  </div>
+
+  <script>
+    function login() {
+      const user = document.getElementById('username').value;
+      const pass = document.getElementById('password').value;
+      const correctUser = "ASI-admin";
+      const correctPass = "Web-374374";
+
+      if (user === correctUser && pass === correctPass) {
+        document.querySelector(".login-box").classList.add("hidden");
+        document.getElementById("admin-panel").classList.remove("hidden");
+      } else {
+        document.getElementById("error").style.display = "block";
+      }
+    }
+  </script>
 </body>
 </html>

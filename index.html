@@ -2,7 +2,7 @@
 <html lang="de">
 <head>
   <meta charset="UTF-8">
-  <title>ASI-WACHE Admin – Zeiten bearbeiten</title>
+  <title>ASI-WACHE Admin – Zeiten mit Datum</title>
   <style>
     body { font-family: Arial, sans-serif; background: #f4f4f4; padding: 2em; }
     .header { display: flex; align-items: center; gap: 1em; margin-bottom: 2em; }
@@ -19,30 +19,59 @@
 <body>
   <div class="header">
     <img src="logo.png" alt="ASI-WACHE Logo">
-    <h1>ASI-WACHE Adminpanel – Zeiten bearbeiten</h1>
+    <h1>ASI-WACHE Adminpanel – Zeiten mit Datum</h1>
   </div>
 
   <div class="section">
-    <h2>✏️ Arbeitszeiten bearbeiten</h2>
+    <h2>📅 Arbeitszeiten mit Datum & Netto-Stunden</h2>
     <table>
       <thead>
         <tr>
+          <th>Datum</th>
+          <th>Wochentag</th>
           <th>Mitarbeiter</th>
           <th>Start</th>
           <th>Pause</th>
           <th>Weiter</th>
           <th>Feierabend</th>
+          <th>Netto</th>
           <th>Aktion</th>
         </tr>
       </thead>
       <tbody id="timeTable">
-        <tr><td colspan="6">Wird geladen...</td></tr>
+        <tr><td colspan="9">Wird geladen...</td></tr>
       </tbody>
     </table>
   </div>
 
 <script>
   const API_URL = "https://asi-wache-times-editable.onrender.com/api/times";
+
+  function parseTime(str) {
+    if (!str) return null;
+    const [h, m] = str.split(":").map(Number);
+    return new Date(0, 0, 0, h, m);
+  }
+
+  function diffInHours(start, end) {
+    if (!start || !end) return 0;
+    return (end - start) / 1000 / 60 / 60;
+  }
+
+  function formatHours(h) {
+    if (isNaN(h)) return "-";
+    const hours = Math.floor(h);
+    const minutes = Math.round((h - hours) * 60);
+    return `${hours}h ${minutes}min`;
+  }
+
+  function formatDate(d) {
+    return d.toLocaleDateString("de-DE");
+  }
+
+  function getWeekday(d) {
+    return d.toLocaleDateString("de-DE", { weekday: "long" });
+  }
 
   async function loadTimes() {
     const res = await fetch(API_URL);
@@ -51,14 +80,31 @@
     tbody.innerHTML = "";
 
     times.forEach(entry => {
+      const id = entry.id;
+      const start = entry.start || "";
+      const pause = entry.pause || "";
+      const resume = entry.resume || "";
+      const end = entry.end || "";
+      const date = new Date(); // in Zukunft könnte entry.date hier stehen
+      const tStart = parseTime(start);
+      const tPause = parseTime(pause);
+      const tResume = parseTime(resume);
+      const tEnd = parseTime(end);
+
+      let netto = diffInHours(tStart, tEnd) - diffInHours(tPause, tResume);
+      const nettoFormatted = formatHours(netto);
+
       const row = document.createElement("tr");
       row.innerHTML = `
+        <td>${formatDate(date)}</td>
+        <td>${getWeekday(date)}</td>
         <td>${entry.name}</td>
-        <td><input type="text" value="${entry.start || ""}" id="start-${entry.id}"></td>
-        <td><input type="text" value="${entry.pause || ""}" id="pause-${entry.id}"></td>
-        <td><input type="text" value="${entry.resume || ""}" id="resume-${entry.id}"></td>
-        <td><input type="text" value="${entry.end || ""}" id="end-${entry.id}"></td>
-        <td><button onclick="saveTime('${entry.id}')">💾 Speichern</button></td>
+        <td><input type="text" value="${start}" id="start-${id}"></td>
+        <td><input type="text" value="${pause}" id="pause-${id}"></td>
+        <td><input type="text" value="${resume}" id="resume-${id}"></td>
+        <td><input type="text" value="${end}" id="end-${id}"></td>
+        <td>${nettoFormatted}</td>
+        <td><button onclick="saveTime('${id}')">💾 Speichern</button></td>
       `;
       tbody.appendChild(row);
     });

@@ -2,50 +2,52 @@
 <html lang="de">
 <head>
   <meta charset="UTF-8">
-  <title>ASI-WACHE Admin – Zeiten mit Datum</title>
+  <title>ASI-WACHE Export</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <style>
     body { font-family: Arial, sans-serif; background: #f4f4f4; padding: 2em; }
-    .header { display: flex; align-items: center; gap: 1em; margin-bottom: 2em; }
+    .header { display: flex; align-items: center; gap: 1em; margin-bottom: 1em; }
     .header img { height: 60px; }
-    .section { background: white; padding: 1em; margin-bottom: 2em; border-radius: 10px; box-shadow: 0 0 10px rgba(0,0,0,0.1); }
+    .section { background: white; padding: 1em; border-radius: 10px; box-shadow: 0 0 10px rgba(0,0,0,0.1); }
     table { width: 100%; border-collapse: collapse; margin-top: 1em; }
     th, td { border: 1px solid #ccc; padding: 0.5em; text-align: center; }
     th { background: #eee; }
-    input[type="text"] { width: 100%; padding: 0.3em; text-align: center; }
-    button { padding: 0.3em 0.6em; }
+    button { margin-top: 1em; padding: 0.5em 1em; }
     h1, h2 { color: #c00; }
   </style>
 </head>
 <body>
   <div class="header">
     <img src="logo.png" alt="ASI-WACHE Logo">
-    <h1>ASI-WACHE Adminpanel – Zeiten mit Datum</h1>
+    <h1>ASI-WACHE – Export Arbeitszeiten</h1>
   </div>
 
   <div class="section">
-    <h2>📅 Arbeitszeiten mit Datum & Netto-Stunden</h2>
-    <table>
+    <h2>📊 Tabelle</h2>
+    <table id="timeTable">
       <thead>
         <tr>
-          <th>Datum</th>
-          <th>Wochentag</th>
-          <th>Mitarbeiter</th>
+          <th>Name</th>
           <th>Start</th>
           <th>Pause</th>
           <th>Weiter</th>
           <th>Feierabend</th>
           <th>Netto</th>
-          <th>Aktion</th>
         </tr>
       </thead>
-      <tbody id="timeTable">
-        <tr><td colspan="9">Wird geladen...</td></tr>
+      <tbody>
+        <tr><td colspan="6">Wird geladen...</td></tr>
       </tbody>
     </table>
+
+    <button onclick="exportToExcel()">⬇ Export als Excel</button>
+    <button onclick="exportToPDF()">⬇ Export als PDF</button>
   </div>
 
 <script>
   const API_URL = "https://asi-wache-times-editable.onrender.com/api/times";
+  let cachedData = [];
 
   function parseTime(str) {
     if (!str) return null;
@@ -65,74 +67,66 @@
     return `${hours}h ${minutes}min`;
   }
 
-  function formatDate(d) {
-    return d.toLocaleDateString("de-DE");
-  }
-
-  function getWeekday(d) {
-    return d.toLocaleDateString("de-DE", { weekday: "long" });
-  }
-
-  async function loadTimes() {
+  async function loadData() {
     const res = await fetch(API_URL);
-    const times = await res.json();
-    const tbody = document.getElementById("timeTable");
+    const data = await res.json();
+    cachedData = data;
+    const tbody = document.querySelector("#timeTable tbody");
     tbody.innerHTML = "";
 
-    times.forEach(entry => {
-      const id = entry.id;
-      const start = entry.start || "";
-      const pause = entry.pause || "";
-      const resume = entry.resume || "";
-      const end = entry.end || "";
-      const date = new Date(); // in Zukunft könnte entry.date hier stehen
-      const tStart = parseTime(start);
-      const tPause = parseTime(pause);
-      const tResume = parseTime(resume);
-      const tEnd = parseTime(end);
-
-      let netto = diffInHours(tStart, tEnd) - diffInHours(tPause, tResume);
-      const nettoFormatted = formatHours(netto);
+    data.forEach(entry => {
+      const tStart = parseTime(entry.start);
+      const tPause = parseTime(entry.pause);
+      const tResume = parseTime(entry.resume);
+      const tEnd = parseTime(entry.end);
+      const netto = formatHours(diffInHours(tStart, tEnd) - diffInHours(tPause, tResume));
 
       const row = document.createElement("tr");
       row.innerHTML = `
-        <td>${formatDate(date)}</td>
-        <td>${getWeekday(date)}</td>
         <td>${entry.name}</td>
-        <td><input type="text" value="${start}" id="start-${id}"></td>
-        <td><input type="text" value="${pause}" id="pause-${id}"></td>
-        <td><input type="text" value="${resume}" id="resume-${id}"></td>
-        <td><input type="text" value="${end}" id="end-${id}"></td>
-        <td>${nettoFormatted}</td>
-        <td><button onclick="saveTime('${id}')">💾 Speichern</button></td>
+        <td>${entry.start || "-"}</td>
+        <td>${entry.pause || "-"}</td>
+        <td>${entry.resume || "-"}</td>
+        <td>${entry.end || "-"}</td>
+        <td>${netto}</td>
       `;
       tbody.appendChild(row);
     });
   }
 
-  async function saveTime(id) {
-    const body = {
-      start: document.getElementById(`start-${id}`).value,
-      pause: document.getElementById(`pause-${id}`).value,
-      resume: document.getElementById(`resume-${id}`).value,
-      end: document.getElementById(`end-${id}`).value
-    };
-
-    const res = await fetch(API_URL + "/" + id, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body)
-    });
-
-    if (res.ok) {
-      alert("✅ Gespeichert");
-      loadTimes();
-    } else {
-      alert("❌ Fehler beim Speichern");
-    }
+  function exportToExcel() {
+    const worksheet = XLSX.utils.json_to_sheet(cachedData.map(e => ({
+      Name: e.name,
+      Start: e.start,
+      Pause: e.pause,
+      Weiter: e.resume,
+      Feierabend: e.end
+    })));
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Zeiten");
+    XLSX.writeFile(workbook, "ASI-WACHE-Zeiten.xlsx");
   }
 
-  loadTimes();
+  async function exportToPDF() {
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF();
+    doc.setFontSize(12);
+    doc.text("ASI-WACHE – Arbeitszeiten", 10, 10);
+
+    const rows = cachedData.map(e => [
+      e.name, e.start || "-", e.pause || "-", e.resume || "-", e.end || "-"
+    ]);
+
+    doc.autoTable({
+      head: [["Name", "Start", "Pause", "Weiter", "Feierabend"]],
+      body: rows,
+      startY: 20
+    });
+
+    doc.save("ASI-WACHE-Zeiten.pdf");
+  }
+
+  loadData();
 </script>
 </body>
 </html>

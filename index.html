@@ -2,66 +2,55 @@
 <html lang="de">
 <head>
   <meta charset="UTF-8">
-  <title>ASI-WACHE Adminpanel</title>
+  <title>ASI-WACHE Admin – Foto-Upload</title>
   <style>
     body { font-family: Arial, sans-serif; background: #f4f4f4; padding: 2em; }
     .header { display: flex; align-items: center; gap: 1em; margin-bottom: 2em; }
     .header img { height: 60px; }
     .section { background: white; padding: 1em; margin-bottom: 2em; border-radius: 10px; box-shadow: 0 0 10px rgba(0,0,0,0.1); }
     h1, h2 { color: #c00; }
-    ul, table { width: 100%; border-collapse: collapse; }
-    td, th { border: 1px solid #ccc; padding: 8px; }
-    input, textarea, select, button { margin-top: 0.5em; width: 100%; padding: 0.5em; }
-    .btn-group { display: flex; gap: 0.5em; margin-top: 1em; }
+    input[type="file"], button { padding: 0.5em; margin-top: 1em; width: 100%; }
+    #result img { margin-top: 1em; max-width: 100%; }
   </style>
 </head>
 <body>
   <div class="header">
     <img src="logo.png" alt="ASI-WACHE Logo">
-    <h1>ASI-Wache Adminpanel</h1>
+    <h1>ASI-WACHE Adminpanel – Foto-Upload</h1>
   </div>
 
   <div class="section">
-    <h2>🕒 Arbeitszeiterfassung</h2>
-    <select id="activeUserSelect"></select>
-    <div class="btn-group">
-      <button onclick="postAction('start')">Arbeitsbeginn</button>
-      <button onclick="postAction('pause')">Pause starten</button>
-      <button onclick="postAction('resume')">Pause beenden</button>
-      <button onclick="postAction('end')">Feierabend</button>
-    </div>
-    <p id="timeActionStatus"></p>
+    <h2>📸 Foto hochladen</h2>
+    <form id="uploadForm">
+      <input type="file" id="photoInput" name="photo" accept="image/*" required>
+      <button type="submit">Hochladen</button>
+    </form>
+    <div id="result"></div>
   </div>
 
   <script>
-    const TIMESHEET_API_URL = "https://asi-wache-timesheet.onrender.com";
+    const uploadUrl = "https://asi-wache-upload.onrender.com/api/upload"; // ← bei Bedarf anpassen
 
-    async function loadUsersForTimesheet() {
-      const res = await fetch("https://asi-wache-backend.onrender.com/api/users");
-      const users = await res.json();
-      const select = document.getElementById("activeUserSelect");
-      select.innerHTML = "";
-      users.forEach(user => {
-        const option = document.createElement("option");
-        option.value = user.id;
-        option.textContent = user.name;
-        select.appendChild(option);
-      });
-    }
+    document.getElementById("uploadForm").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const fileInput = document.getElementById("photoInput");
+      const formData = new FormData();
+      formData.append("photo", fileInput.files[0]);
 
-    async function postAction(action) {
-      const userId = document.getElementById("activeUserSelect").value;
-      const response = await fetch(`${TIMESHEET_API_URL}/api/${action}`, {
+      const res = await fetch(uploadUrl, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ userId })
+        body: formData
       });
 
-      const data = await response.json();
-      document.getElementById("timeActionStatus").textContent = data.status || data.error || "Fehler";
-    }
-
-    loadUsersForTimesheet();
+      const data = await res.json();
+      const result = document.getElementById("result");
+      if (data.success) {
+        result.innerHTML = `<p style="color:green;">✅ Hochgeladen: ${data.filename}</p>
+                            <img src="${uploadUrl.replace("/api/upload", "") + "/uploads/" + data.filename}" alt="Vorschau">`;
+      } else {
+        result.innerHTML = `<p style="color:red;">❌ Fehler beim Upload</p>`;
+      }
+    });
   </script>
 </body>
 </html>

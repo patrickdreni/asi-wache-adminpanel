@@ -2,55 +2,72 @@
 <html lang="de">
 <head>
   <meta charset="UTF-8">
-  <title>ASI-WACHE Admin – Foto-Upload</title>
+  <title>ASI-WACHE Admin – Mitarbeiterverwaltung</title>
   <style>
     body { font-family: Arial, sans-serif; background: #f4f4f4; padding: 2em; }
     .header { display: flex; align-items: center; gap: 1em; margin-bottom: 2em; }
     .header img { height: 60px; }
     .section { background: white; padding: 1em; margin-bottom: 2em; border-radius: 10px; box-shadow: 0 0 10px rgba(0,0,0,0.1); }
     h1, h2 { color: #c00; }
-    input[type="file"], button { padding: 0.5em; margin-top: 1em; width: 100%; }
-    #result img { margin-top: 1em; max-width: 100%; }
+    input, button { padding: 0.5em; margin-top: 0.5em; width: 100%; }
+    ul { list-style: none; padding: 0; }
+    li { padding: 0.3em 0; display: flex; justify-content: space-between; }
+    li button { width: auto; background: #c00; color: white; border: none; padding: 0.3em 0.6em; border-radius: 5px; cursor: pointer; }
   </style>
 </head>
 <body>
   <div class="header">
     <img src="logo.png" alt="ASI-WACHE Logo">
-    <h1>ASI-WACHE Adminpanel – Foto-Upload</h1>
+    <h1>ASI-WACHE Adminpanel – Mitarbeiter</h1>
   </div>
 
   <div class="section">
-    <h2>📸 Foto hochladen</h2>
-    <form id="uploadForm">
-      <input type="file" id="photoInput" name="photo" accept="image/*" required>
-      <button type="submit">Hochladen</button>
+    <h2>🧑‍💼 Neuen Mitarbeiter hinzufügen</h2>
+    <form id="addForm">
+      <input type="text" id="newName" placeholder="Name des Mitarbeiters" required />
+      <button type="submit">Hinzufügen</button>
     </form>
-    <div id="result"></div>
+  </div>
+
+  <div class="section">
+    <h2>📋 Aktuelle Mitarbeiter</h2>
+    <ul id="userList">Wird geladen...</ul>
   </div>
 
   <script>
-    const uploadUrl = "https://asi-wache-upload.onrender.com/api/upload"; // ← bei Bedarf anpassen
+    const API_URL = "https://asi-wache-backend-users.onrender.com/api/users";
 
-    document.getElementById("uploadForm").addEventListener("submit", async (e) => {
-      e.preventDefault();
-      const fileInput = document.getElementById("photoInput");
-      const formData = new FormData();
-      formData.append("photo", fileInput.files[0]);
-
-      const res = await fetch(uploadUrl, {
-        method: "POST",
-        body: formData
+    async function loadUsers() {
+      const res = await fetch(API_URL);
+      const users = await res.json();
+      const list = document.getElementById("userList");
+      list.innerHTML = "";
+      users.forEach(user => {
+        const li = document.createElement("li");
+        li.innerHTML = `<span>${user.name}</span><button onclick="deleteUser('${user.id}')">Löschen</button>`;
+        list.appendChild(li);
       });
+    }
 
-      const data = await res.json();
-      const result = document.getElementById("result");
-      if (data.success) {
-        result.innerHTML = `<p style="color:green;">✅ Hochgeladen: ${data.filename}</p>
-                            <img src="${uploadUrl.replace("/api/upload", "") + "/uploads/" + data.filename}" alt="Vorschau">`;
-      } else {
-        result.innerHTML = `<p style="color:red;">❌ Fehler beim Upload</p>`;
-      }
+    async function deleteUser(id) {
+      await fetch(API_URL + "/" + id, { method: "DELETE" });
+      loadUsers();
+    }
+
+    document.getElementById("addForm").addEventListener("submit", async e => {
+      e.preventDefault();
+      const name = document.getElementById("newName").value;
+      if (!name) return;
+      await fetch(API_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name })
+      });
+      document.getElementById("newName").value = "";
+      loadUsers();
     });
+
+    loadUsers();
   </script>
 </body>
 </html>

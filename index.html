@@ -5,92 +5,63 @@
   <title>ASI-WACHE Adminpanel</title>
   <style>
     body { font-family: Arial, sans-serif; background: #f4f4f4; padding: 2em; }
+    .header { display: flex; align-items: center; gap: 1em; margin-bottom: 2em; }
+    .header img { height: 60px; }
     .section { background: white; padding: 1em; margin-bottom: 2em; border-radius: 10px; box-shadow: 0 0 10px rgba(0,0,0,0.1); }
-    h2 { color: #c00; }
+    h1, h2 { color: #c00; }
     ul, table { width: 100%; border-collapse: collapse; }
     td, th { border: 1px solid #ccc; padding: 8px; }
     input, textarea, select, button { margin-top: 0.5em; width: 100%; padding: 0.5em; }
+    .btn-group { display: flex; gap: 0.5em; margin-top: 1em; }
   </style>
 </head>
 <body>
-  <h1>ASI-WACHE Adminpanel</h1>
-
-  <div class="section">
-    <h2>👥 Mitarbeiter</h2>
-    <ul id="userList">Wird geladen...</ul>
+  <div class="header">
+    <img src="logo.png" alt="ASI-WACHE Logo">
+    <h1>ASI-Wache Adminpanel</h1>
   </div>
 
   <div class="section">
-    <h2>🕒 Arbeitszeiten</h2>
-    <select id="userSelect"></select>
-    <button onclick="loadTimesheets()">Zeiten anzeigen</button>
-    <table id="timesheetTable">
-      <thead><tr><th>Name</th><th>Datum</th><th>Start</th><th>Ende</th></tr></thead>
-      <tbody></tbody>
-    </table>
-  </div>
-
-  <div class="section">
-    <h2>📩 Nachricht senden</h2>
-    <select id="messageUserSelect"></select>
-    <textarea id="messageText" placeholder="Nachricht eingeben..."></textarea>
-    <button onclick="sendMessage()">Senden</button>
-    <p id="messageStatus"></p>
+    <h2>🕒 Arbeitszeiterfassung</h2>
+    <select id="activeUserSelect"></select>
+    <div class="btn-group">
+      <button onclick="postAction('start')">Arbeitsbeginn</button>
+      <button onclick="postAction('pause')">Pause starten</button>
+      <button onclick="postAction('resume')">Pause beenden</button>
+      <button onclick="postAction('end')">Feierabend</button>
+    </div>
+    <p id="timeActionStatus"></p>
   </div>
 
   <script>
-    const API_URL = "https://asi-wache-backend.onrender.com";
+    const TIMESHEET_API_URL = "https://asi-wache-timesheet.onrender.com";
 
-    async function loadUsers() {
-      const res = await fetch(API_URL + "/api/users");
+    async function loadUsersForTimesheet() {
+      const res = await fetch("https://asi-wache-backend.onrender.com/api/users");
       const users = await res.json();
-      const list = document.getElementById("userList");
-      const select = document.getElementById("userSelect");
-      const msgSelect = document.getElementById("messageUserSelect");
-
-      list.innerHTML = "";
+      const select = document.getElementById("activeUserSelect");
+      select.innerHTML = "";
       users.forEach(user => {
-        const li = document.createElement("li");
-        li.textContent = user.name;
-        list.appendChild(li);
-
         const option = document.createElement("option");
         option.value = user.id;
         option.textContent = user.name;
         select.appendChild(option);
-
-        const msgOption = option.cloneNode(true);
-        msgSelect.appendChild(msgOption);
       });
     }
 
-    async function loadTimesheets() {
-      const userId = document.getElementById("userSelect").value;
-      const res = await fetch(API_URL + "/api/timesheets?userId=" + userId);
-      const data = await res.json();
-
-      const tbody = document.querySelector("#timesheetTable tbody");
-      tbody.innerHTML = "";
-      data.forEach(entry => {
-        const tr = document.createElement("tr");
-        tr.innerHTML = `<td>${userId}</td><td>${entry.date}</td><td>${entry.start}</td><td>${entry.end}</td>`;
-        tbody.appendChild(tr);
-      });
-    }
-
-    async function sendMessage() {
-      const to = document.getElementById("messageUserSelect").value;
-      const message = document.getElementById("messageText").value;
-      const res = await fetch(API_URL + "/api/messages", {
+    async function postAction(action) {
+      const userId = document.getElementById("activeUserSelect").value;
+      const response = await fetch(`${TIMESHEET_API_URL}/api/${action}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ to, message })
+        body: JSON.stringify({ userId })
       });
-      const result = await res.json();
-      document.getElementById("messageStatus").textContent = result.msg || "Gesendet!";
+
+      const data = await response.json();
+      document.getElementById("timeActionStatus").textContent = data.status || data.error || "Fehler";
     }
 
-    loadUsers();
+    loadUsersForTimesheet();
   </script>
 </body>
 </html>
